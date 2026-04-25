@@ -2,6 +2,8 @@
 
 A breathing meditation app by Twin Kites LLC. The goal is to provide a moment of peacefulness rest in your day.
 
+https://twinkites.github.io/moment_of_peace/
+
 ---
 
 ## What it does
