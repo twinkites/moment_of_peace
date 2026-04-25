@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07071a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>moment of peace</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg:      #07071a;
+      --ambient: rgba(180, 160, 255, 0.06);
+      --label:   rgba(220, 228, 255, 0.92);
+      --title:   rgba(200, 212, 255, 0.50);
+
+      /* pastel glow — resting */
+      --gs1: rgba(185, 205, 255, 0.28);
+      --gs2: rgba(200, 175, 255, 0.14);
+      --gs3: rgba(165, 145, 240, 0.07);
+      /* pastel glow — expanded */
+      --gl1: rgba(185, 205, 255, 0.60);
+      --gl2: rgba(200, 175, 255, 0.30);
+      --gl3: rgba(165, 145, 240, 0.16);
+
+    }
+
+    @media (prefers-color-scheme: light) {
+      /* only apply light theme when dark mode isn't manually forced */
+      :root:not([data-theme="dark"]) {
+        --bg:      #f0eeff;
+        --ambient: rgba(160, 130, 255, 0.07);
+        --label:   rgba(90, 70, 180, 0.45);
+        --title:   rgba(90, 70, 180, 0.20);
+
+        --gs1: rgba(160, 180, 255, 0.32);
+        --gs2: rgba(180, 150, 255, 0.16);
+        --gs3: rgba(150, 130, 230, 0.08);
+        --gl1: rgba(160, 180, 255, 0.58);
+        --gl2: rgba(180, 150, 255, 0.28);
+        --gl3: rgba(150, 130, 230, 0.13);
+      }
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background 0.4s ease;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 60% at 50% 50%,
+        var(--ambient) 0%,
+        transparent 70%
+      );
+      animation: ambience var(--cycle-duration, 8s) ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes ambience {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1;   }
+    }
+
+    .scene {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 52px;
+      z-index: 1;
+    }
+
+    /* ── orb wrapper — holds orb + timer arc ── */
+    .orb-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── session timer arc ── */
+    .timer-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+    .timer-svg.active { opacity: 1; }
+    .timer-svg.done   { opacity: 0; transition: opacity 3s ease; }
+
+    .timer-track {
+      fill: none;
+      stroke: rgba(150, 200, 255, 0.10);
+      stroke-width: 1.5;
+    }
+    .timer-fill {
+      fill: none;
+      stroke: rgba(160, 210, 255, 0.45);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear;
+      filter: url(#glow);
+    }
+
+    /* ── orb ── */
+    .orb {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      position: relative;
+      cursor: pointer;
+
+      background: radial-gradient(circle at 36% 32%,
+        #f4f0ff 0%,
+        #ccdaf8 16%,
+        #aab8f0 36%,
+        #c8a8f2 60%,
+        #9272cc 82%,
+        #503a96 100%
+      );
+
+      /* initial resting shadow — JS takes over after first tick */
+      box-shadow:
+        0 0  10px  3px  var(--gs1),
+        0 0  32px  12px var(--gs2),
+        0 0  80px  40px var(--gs3);
+
+      transform: scale(0.84); /* initial resting scale — JS takes over immediately */
+      will-change: transform, filter;
+    }
+
+    .orb::before {
+      content: '';
+      position: absolute;
+      top: 12%;
+      left: 18%;
+      width: 32%;
+      height: 22%;
+      border-radius: 50%;
+      /* gradient-only highlight — no filter, avoids nested-filter compositing artifact */
+      background: radial-gradient(ellipse at 40% 40%,
+        rgba(255, 255, 255, 0.72) 0%,
+        rgba(255, 255, 255, 0.28) 45%,
+        transparent 100%
+      );
+    }
+
+    .orb::after {
+      content: '';
+      position: absolute;
+      inset: -18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center,
+        transparent 45%,
+        rgba(100, 150, 255, 0.12) 65%,
+        transparent 80%
+      );
+      animation: halo var(--cycle-duration, 8s) ease-in-out infinite;
+    }
+
+    .orb.paused::after {
+      animation-play-state: paused;
+    }
+
+    @keyframes halo {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50%       { opacity: 1;   transform: scale(1.1); }
+    }
+
+    /* ── particles canvas ── */
+    #particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── breath label ── */
+    .breath-label {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--label);
+      height: 1em;
+      user-select: none;
+      transition: opacity 0.8s ease;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .breath-label.fade { opacity: 0; }
+
+    /* ── bottom controls ── */
+    .controls {
+      position: fixed;
+      bottom: 52px;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 2;
+    }
+
+    /* pattern dots */
+    .pattern-dots {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--label);
+      opacity: 0.35;
+      cursor: pointer;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .dot.active {
+      opacity: 0.85;
+      transform: scale(1.5);
+    }
+
+    /* timer buttons */
+    .timer-btns {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .tbtn {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--label);
+      opacity: 0.45;
+      cursor: pointer;
+      transition: opacity 0.3s ease;
+      user-select: none;
+    }
+
+    .tbtn:hover  { opacity: 0.70; }
+    .tbtn.active { opacity: 0.95; }
+
+    /* sound toggles */
+    .sound-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .sbtn {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--label);
+      opacity: 0.45;
+      cursor: pointer;
+      transition: opacity 0.3s ease;
+      user-select: none;
+    }
+    .sbtn:hover  { opacity: 0.70; }
+    .sbtn.active { opacity: 0.95; }
+
+    /* ── time-of-day color overlay ── */
+    #tod-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      transition: background 90s ease; /* very slow, imperceptible shift */
+    }
+
+    /* ── dim overlay ── */
+    #dim-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 1.5s ease;
+    }
+    #dim-overlay.on { opacity: 0.91; }
+
+    /* ── bottom-right button strip ── */
+    #bottom-right {
+      position: fixed;
+      bottom: 28px;
+      right: 24px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      z-index: 200;
+    }
+    #bottom-right span {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--label);
+      opacity: 0.45;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.3s ease, color 0.3s ease;
+    }
+    #bottom-right span:hover   { opacity: 0.70; }
+    #dim-btn.active  { opacity: 0.95 !important; color: rgba(255,220,160,0.9) !important; }
+    #dark-btn.active { opacity: 0.95 !important; }
+
+    /* ── branding ── */
+    #branding {
+      position: fixed;
+      bottom: 22px;
+      left: 22px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      opacity: 0.20;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #brand-logo {
+      width: 20px;
+      height: 20px;
+      /* render white regardless of original SVG fill */
+      filter: brightness(0) invert(1);
+    }
+
+    #brand-name {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.55rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--label);
+    }
+
+    /* ── title ── */
+    .title {
+      position: fixed;
+      bottom: 28px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 0.75rem;
+      font-style: italic;
+      color: var(--title);
+      letter-spacing: 0.1em;
+      user-select: none;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="particles"></canvas>
+
+  <div class="scene">
+    <div class="orb-wrap">
+      <!-- SVG timer arc -->
+      <svg class="timer-svg" id="timerSvg" viewBox="0 0 220 220">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <circle class="timer-track" cx="110" cy="110" r="104"/>
+        <circle class="timer-fill" id="timerFill" cx="110" cy="110" r="104"/>
+      </svg>
+
+      <div class="orb" id="orb"></div>
+    </div>
+
+    <div class="breath-label" id="label">breathe in</div>
+  </div>
+
+  <!-- bottom controls -->
+  <div class="controls">
+    <div class="sound-row">
+      <span class="sbtn" id="binauralBtn">binaural</span>
+      <span class="sbtn" id="rainBtn">rain</span>
+    </div>
+    <div class="timer-btns">
+      <span class="tbtn" data-min="0">—</span>
+      <span class="tbtn" data-min="1">1 min</span>
+      <span class="tbtn" data-min="3">3 min</span>
+      <span class="tbtn" data-min="5">5 min</span>
+    </div>
+    <div class="pattern-dots">
+      <span class="dot active" data-pattern="4-4"     title="even 4·4"></span>
+      <span class="dot"        data-pattern="4-7-8"   title="4·7·8"></span>
+      <span class="dot"        data-pattern="box"     title="box 4·4·4·4"></span>
+    </div>
+  </div>
+
+  <div id="branding">
+    <img id="brand-logo" src="1.svg" alt="" />
+    <span id="brand-name">Twin Kites LLC</span>
+  </div>
+
+  <div id="tod-overlay"></div>
+  <div id="dim-overlay"></div>
+  <div id="bottom-right">
+    <span id="dark-btn">dark</span>
+    <span id="dim-btn">dim</span>
+  </div>
+
+  <p class="title">moment of peace</p>
+
+  <script>
+    // ── breathing patterns ──────────────────────────────────────────────────
+    // Each phase: [label, seconds]
+    const PATTERNS = {
+      '4-4':   [['breathe in', 4], ['breathe out', 4]],
+      '4-7-8': [['breathe in', 4], ['hold', 7], ['breathe out', 8]],
+      'box':   [['breathe in', 4], ['hold', 4], ['breathe out', 4], ['hold', 4]],
+    };
+
+    // ── localStorage preferences ─────────────────────────────────────────────
+    // called only from user-gesture handlers, so currentPattern + darkOn are always live
+    function savePrefs() {
+      localStorage.setItem('mop_pattern', currentPattern);
+      localStorage.setItem('mop_dark',    darkOn);
+    }
+
+    // load saved pattern, fall back to '4-4'
+    const _sp = localStorage.getItem('mop_pattern');
+    let currentPattern = (_sp && PATTERNS[_sp]) ? _sp : '4-4';
+    let phaseIndex     = 0;
+    let phaseStart     = performance.now();
+    let paused         = false;
+    let pausedAt       = 0;
+
+    // sync the active dot to the restored pattern
+    document.querySelectorAll('.dot').forEach(d =>
+      d.classList.toggle('active', d.dataset.pattern === currentPattern)
+    );
+
+    const orb   = document.getElementById('orb');
+    const label = document.getElementById('label');
+
+    function getPhases() { return PATTERNS[currentPattern]; }
+
+    function totalCycleMs() {
+      return getPhases().reduce((s, [, sec]) => s + sec * 1000, 0);
+    }
+
+    // Keep --cycle-duration in sync for the halo CSS animation
+    function updateCssCycle() {
+      const dur = totalCycleMs() / 1000 + 's';
+      document.documentElement.style.setProperty('--cycle-duration', dur);
+    }
+    updateCssCycle();
+
+    // smooth ease-in-out — same feel as CSS ease-in-out
+    function easeInOut(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
+
+    // Map phase to visual expansion (0=small, 1=large), with easing on moving phases
+    function phaseToExpansion(idx, rawProgress) {
+      const phases = getPhases();
+      const name = phases[idx][0];
+      const p = easeInOut(rawProgress);
+      if (name === 'breathe in')  return p;
+      if (name === 'breathe out') return 1 - p;
+      if (idx > 0 && phases[idx-1][0] === 'breathe in')  return 1;
+      if (idx > 0 && phases[idx-1][0] === 'breathe out') return 0;
+      return idx === 0 ? 0 : 1;
+    }
+
+    // Interpolate box-shadow between resting (t=0) and full (t=1) — pastel glow palette
+    function lerpShadow(t) {
+      const s = (a, b) => (a + (b - a) * t).toFixed(1);
+      const a = (lo, hi) => (lo + (hi - lo) * t).toFixed(2);
+      return [
+        `0 0 ${s(10,28)}px ${s(3,12)}px rgba(185,205,255,${a(0.28,0.60)})`,
+        `0 0 ${s(32,80)}px ${s(12,36)}px rgba(200,175,255,${a(0.14,0.30)})`,
+        `0 0 ${s(80,180)}px ${s(40,100)}px rgba(165,145,240,${a(0.07,0.16)})`,
+      ].join(', ');
+    }
+
+    // ── label ───────────────────────────────────────────────────────────────
+    let displayedLabel = null;
+
+    function updateLabel(text) {
+      if (text === displayedLabel) return;
+      label.classList.add('fade');
+      setTimeout(() => {
+        label.textContent = text;
+        label.classList.remove('fade');
+        displayedLabel = text;
+      }, 400);
+      displayedLabel = text;
+    }
+
+    // ── pause on orb click ──────────────────────────────────────────────────
+    orb.addEventListener('click', () => {
+      paused = !paused;
+      if (paused) {
+        orb.classList.add('paused');
+        pausedAt = performance.now();
+        updateLabel('hold');
+      } else {
+        orb.classList.remove('paused');
+        // shift phaseStart forward by paused duration so the cycle resumes cleanly
+        phaseStart += (performance.now() - pausedAt);
+        // force label re-sync
+        displayedLabel = null;
+      }
+    });
+
+    // ── pattern selection ───────────────────────────────────────────────────
+    document.querySelectorAll('.dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        currentPattern = dot.dataset.pattern;
+        phaseIndex = 0;
+        phaseStart = performance.now();
+        displayedLabel = null;
+        updateCssCycle();
+
+        document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        savePrefs();
+      });
+    });
+
+    // ── session timer ────────────────────────────────────────────────────────
+    const timerSvg  = document.getElementById('timerSvg');
+    const timerFill = document.getElementById('timerFill');
+    const R = 104;
+    const CIRCUM = 2 * Math.PI * R;
+    timerFill.style.strokeDasharray  = CIRCUM;
+    timerFill.style.strokeDashoffset = CIRCUM; // start empty
+
+    let timerDuration = 0; // ms, 0 = off
+    let timerStart    = null;
+
+    document.querySelectorAll('.tbtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const min = parseInt(btn.dataset.min, 10);
+        if (min === 0) {
+          timerDuration = 0;
+          timerStart = null;
+          timerSvg.classList.remove('active', 'done');
+          timerFill.style.strokeDashoffset = CIRCUM;
+        } else {
+          timerDuration = min * 60 * 1000;
+          timerStart = performance.now();
+          timerSvg.classList.remove('done');
+          timerSvg.classList.add('active');
+        }
+      });
+    });
+
+    // ── audio ────────────────────────────────────────────────────────────────
+    let audioCtx    = null;
+    let soundMode   = null; // null | 'binaural' | 'rain'
+
+    // binaural nodes
+    let binauralMaster = null;
+    let breathGain     = null;
+
+    // rain nodes
+    let rainMaster = null;
+
+    function ensureCtx() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function initBinaural() {
+      if (binauralMaster) return;
+      ensureCtx();
+
+      binauralMaster = audioCtx.createGain();
+      binauralMaster.gain.value = 0;
+      binauralMaster.connect(audioCtx.destination);
+
+      breathGain = audioCtx.createGain();
+      breathGain.gain.value = 0.08;
+      breathGain.connect(binauralMaster);
+
+      // 432 Hz left, 436 Hz right → 4 Hz binaural beat
+      const oscL = audioCtx.createOscillator();
+      oscL.type = 'sine';
+      oscL.frequency.value = 432;
+      const panL = audioCtx.createStereoPanner();
+      panL.pan.value = -1;
+      oscL.connect(panL);
+      panL.connect(breathGain);
+      oscL.start();
+
+      const oscR = audioCtx.createOscillator();
+      oscR.type = 'sine';
+      oscR.frequency.value = 436;
+      const panR = audioCtx.createStereoPanner();
+      panR.pan.value = 1;
+      oscR.connect(panR);
+      panR.connect(breathGain);
+      oscR.start();
+    }
+
+    function initRain() {
+      if (rainMaster) return;
+      ensureCtx();
+
+      rainMaster = audioCtx.createGain();
+      rainMaster.gain.value = 0;
+      rainMaster.connect(audioCtx.destination);
+
+      function noiseSource() {
+        const len  = audioCtx.sampleRate * 3;
+        const buf  = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        return src;
+      }
+
+      // Layer 1: broadband rain body
+      const src1  = noiseSource();
+      const hp    = audioCtx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 380;
+      const lp    = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';  lp.frequency.value = 7200; lp.Q.value = 0.4;
+      const g1    = audioCtx.createGain(); g1.gain.value = 0.70;
+      src1.connect(hp); hp.connect(lp); lp.connect(g1); g1.connect(rainMaster);
+      src1.start();
+
+      // Layer 2: mids patter — gives the distinct drop texture
+      const src2  = noiseSource();
+      const bp    = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.7;
+      const g2    = audioCtx.createGain(); g2.gain.value = 0.30;
+      src2.connect(bp); bp.connect(g2); g2.connect(rainMaster);
+      src2.start();
+    }
+
+    function setMode(mode) {
+      ensureCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      // turning off current mode
+      if (mode === soundMode) {
+        if (soundMode === 'binaural') binauralMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+        if (soundMode === 'rain')     rainMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+        soundMode = null;
+      } else {
+        // fade out whatever is playing
+        if (soundMode === 'binaural') binauralMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+        if (soundMode === 'rain')     rainMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+
+        soundMode = mode;
+        if (mode === 'binaural') {
+          initBinaural();
+          binauralMaster.gain.setTargetAtTime(1, audioCtx.currentTime, 2.0);
+        }
+        if (mode === 'rain') {
+          initRain();
+          rainMaster.gain.setTargetAtTime(1, audioCtx.currentTime, 2.0);
+        }
+      }
+
+      document.getElementById('binauralBtn').classList.toggle('active', soundMode === 'binaural');
+      document.getElementById('rainBtn').classList.toggle('active', soundMode === 'rain');
+    }
+
+    document.getElementById('binauralBtn').addEventListener('click', () => setMode('binaural'));
+    document.getElementById('rainBtn').addEventListener('click',     () => setMode('rain'));
+
+    // current expansion (0 = orb small, 1 = orb full) — updated in tick
+    let currentExpansion = 0;
+    let lastVibratePhase = 0; // init to 0 so page load doesn't vibrate
+
+    function updateSoundBreath(expansion) {
+      if (!breathGain || soundMode !== 'binaural') return;
+      // subtle swell on inhale: 0.065 → 0.095
+      breathGain.gain.setTargetAtTime(0.065 + expansion * 0.030, audioCtx.currentTime, 0.8);
+    }
+
+    // ── parallax ─────────────────────────────────────────────────────────────
+    const scene = document.querySelector('.scene');
+    const MAX_SHIFT = 14; // px — subtle, not seasick
+    let targetPX = 0, targetPY = 0;
+    let currentPX = 0, currentPY = 0;
+
+    document.addEventListener('mousemove', e => {
+      const cx = window.innerWidth  / 2;
+      const cy = window.innerHeight / 2;
+      targetPX = ((e.clientX - cx) / cx) * MAX_SHIFT;
+      targetPY = ((e.clientY - cy) / cy) * MAX_SHIFT;
+    });
+
+    function handleOrientation(e) {
+      const gamma = Math.max(-45, Math.min(45, e.gamma || 0));
+      // beta 45° is a comfortable resting hold angle on a phone; offset so neutral = no shift
+      const beta  = Math.max(-45, Math.min(45, (e.beta  || 0) - 45));
+      targetPX = (gamma / 45) * MAX_SHIFT;
+      targetPY = (beta  / 45) * MAX_SHIFT;
+    }
+
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ requires explicit permission — ask on first touch
+        document.addEventListener('touchstart', function askOrient() {
+          DeviceOrientationEvent.requestPermission()
+            .then(s => { if (s === 'granted') window.addEventListener('deviceorientation', handleOrientation); })
+            .catch(() => {});
+        }, { once: true });
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    }
+
+    // ── slow color shift (hue-rotate over ~60 s) ────────────────────────────
+    // blues(0°) → greens(90°) → purples(270°) → back
+    // We drive --hue on the orb element so body ambient stays stable.
+    let hueStart = performance.now();
+    const HUE_CYCLE = 60000; // 60s full rotation
+
+    // ── particle system ─────────────────────────────────────────────────────
+    const canvas = document.getElementById('particles');
+    const ctx    = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const PARTICLE_COUNT = 18;
+    const particles = [];
+
+    function orbCenter() {
+      const rect = orb.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top  + rect.height / 2,
+        r: rect.width / 2,
+      };
+    }
+
+    function spawnParticle() {
+      const c = orbCenter();
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = c.r * (0.7 + Math.random() * 0.5);
+      return {
+        x:     c.x + Math.cos(angle) * dist,
+        y:     c.y + Math.sin(angle) * dist,
+        vx:    (Math.random() - 0.5) * 0.18,
+        vy:    -(0.25 + Math.random() * 0.35),
+        size:  0.8 + Math.random() * 1.4,
+        alpha: 0,
+        life:  0,
+        maxLife: 120 + Math.random() * 180, // frames
+      };
+    }
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const p = spawnParticle();
+      p.life = Math.random() * p.maxLife; // stagger start
+      particles.push(p);
+    }
+
+    function drawParticles(hue) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (const p of particles) {
+        p.life++;
+        p.x += p.vx;
+        p.y += p.vy;
+
+        const t = p.life / p.maxLife;
+        // fade in quickly, hold, then fade out
+        p.alpha = t < 0.15 ? t / 0.15 :
+                  t < 0.75 ? 1 :
+                  (1 - t) / 0.25;
+        p.alpha *= 0.38; // max opacity
+
+        if (p.life >= p.maxLife) {
+          Object.assign(p, spawnParticle());
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${210 + hue * 0.3}, 80%, 78%, ${p.alpha})`;
+        ctx.fill();
+      }
+    }
+
+    // ── time-of-day color tinting ────────────────────────────────────────────
+    // Warm amber at dawn (4-10) and dusk (16-22), deep indigo at night (22-4),
+    // invisible during the day. Runs on load + every 60 s; no per-frame cost.
+    const todOverlay = document.getElementById('tod-overlay');
+
+    function smoothstep(a, b, t) {
+      t = Math.max(0, Math.min(1, (t - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    }
+
+    function applyToD() {
+      const h = new Date().getHours() + new Date().getMinutes() / 60;
+
+      // dawn: peaks 5-7, fades 4→5 and 7→10
+      const dawn = h >= 4 && h < 10
+        ? (h < 5 ? smoothstep(4, 5, h) : h < 7 ? 1 : smoothstep(10, 7, h))
+        : 0;
+
+      // dusk: peaks 17-20, fades 16→17 and 20→22
+      const dusk = h >= 16 && h < 22
+        ? (h < 17 ? smoothstep(16, 17, h) : h < 20 ? 1 : smoothstep(22, 20, h))
+        : 0;
+
+      // night: peaks 23-3, fades 22→23 and 3→4
+      const night = (h >= 22 || h < 4)
+        ? (h >= 22 ? smoothstep(22, 23, h) : h < 3 ? 1 : smoothstep(4, 3, h))
+        : 0;
+
+      const warmth = Math.max(dawn, dusk);
+
+      if (night > 0.01) {
+        // deep indigo night tint
+        const a = (night * 0.10).toFixed(3);
+        todOverlay.style.background = `rgba(40, 20, 100, ${a})`;
+      } else if (warmth > 0.01) {
+        // amber dawn/dusk tint
+        const a = (warmth * 0.09).toFixed(3);
+        todOverlay.style.background = `rgba(255, 170, 60, ${a})`;
+      } else {
+        todOverlay.style.background = 'transparent';
+      }
+    }
+
+    applyToD();
+    setInterval(applyToD, 60_000);
+
+    // ── dim button ───────────────────────────────────────────────────────────
+    const dimBtn     = document.getElementById('dim-btn');
+    const dimOverlay = document.getElementById('dim-overlay');
+    let dimOn = false;
+
+    dimBtn.addEventListener('click', () => {
+      dimOn = !dimOn;
+      dimOverlay.classList.toggle('on', dimOn);
+      dimBtn.classList.toggle('active', dimOn);
+      dimBtn.textContent = dimOn ? 'undim' : 'dim';
+    });
+
+    // ── dark mode toggle ─────────────────────────────────────────────────────
+    const darkBtn = document.getElementById('dark-btn');
+    // default true; savePrefs writes this via darkOnInit alias
+    const _sd = localStorage.getItem('mop_dark');
+    let darkOn = _sd === null ? true : _sd === 'true';
+    document.documentElement.dataset.theme = darkOn ? 'dark' : '';
+    darkBtn.classList.toggle('active', darkOn);
+
+    darkBtn.addEventListener('click', () => {
+      darkOn = !darkOn;
+      document.documentElement.dataset.theme = darkOn ? 'dark' : '';
+      darkBtn.classList.toggle('active', darkOn);
+      savePrefs();
+    });
+
+    // ── wake lock ────────────────────────────────────────────────────────────
+    // Prevents the screen sleeping mid-session. Re-acquired on tab visibility
+    // change because wake lock is automatically released when the tab is hidden.
+    async function requestWakeLock() {
+      if (!('wakeLock' in navigator)) return;
+      try { await navigator.wakeLock.request('screen'); } catch (_) {}
+    }
+    requestWakeLock();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
+
+    // ── service worker ───────────────────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+
+    // ── main loop ────────────────────────────────────────────────────────────
+    const LERP = 0.055; // slow follow — feels meditative, not jittery
+
+    function tick(now) {
+      // parallax: ease toward target
+      currentPX += (targetPX - currentPX) * LERP;
+      currentPY += (targetPY - currentPY) * LERP;
+      scene.style.transform = `translate(${currentPX.toFixed(2)}px, ${currentPY.toFixed(2)}px)`;
+
+      // color shift
+      const hue = ((now - hueStart) / HUE_CYCLE * 360) % 360;
+      orb.style.filter = `hue-rotate(${hue.toFixed(1)}deg)`;
+
+      // particles
+      drawParticles(hue);
+
+      // timer arc
+      if (timerDuration > 0 && timerStart !== null) {
+        const elapsed = now - timerStart;
+        const progress = Math.min(elapsed / timerDuration, 1);
+        timerFill.style.strokeDashoffset = CIRCUM * (1 - progress);
+
+        if (progress >= 1 && !timerSvg.classList.contains('done')) {
+          timerSvg.classList.add('done');
+          timerSvg.classList.remove('active');
+          timerDuration = 0;
+          document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+        }
+      }
+
+      // breathing phase
+      if (!paused) {
+        const phases = getPhases();
+        const phaseDurMs = phases[phaseIndex][1] * 1000;
+        const elapsed = now - phaseStart;
+
+        if (elapsed >= phaseDurMs) {
+          phaseIndex = (phaseIndex + 1) % phases.length;
+          phaseStart = now;
+        }
+
+        updateLabel(phases[phaseIndex][0]);
+
+        // haptic pulse on each phase change
+        if (phaseIndex !== lastVibratePhase) {
+          if (navigator.vibrate) navigator.vibrate(18);
+          lastVibratePhase = phaseIndex;
+        }
+
+        const progress = Math.min((now - phaseStart) / (phases[phaseIndex][1] * 1000), 1);
+        currentExpansion = phaseToExpansion(phaseIndex, progress);
+        updateSoundBreath(currentExpansion);
+      }
+
+      // drive orb scale + shadow from JS so they stay exactly in sync with the label
+      {
+        const scale = 0.84 + currentExpansion * (1.12 - 0.84);
+        orb.style.transform = `scale(${scale.toFixed(4)})`;
+        orb.style.boxShadow = lerpShadow(currentExpansion);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
