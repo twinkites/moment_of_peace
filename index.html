@@ -17,19 +17,19 @@
     }
 
     :root {
-      --bg:      #07071a;
-      --ambient: rgba(180, 160, 255, 0.06);
-      --label:   rgba(220, 228, 255, 0.92);
-      --title:   rgba(200, 212, 255, 0.50);
+      --bg:      #000000;
+      --ambient: rgba(255, 140, 40, 0.05);
+      --label:   rgba(255, 220, 180, 0.90);
+      --title:   rgba(255, 200, 140, 0.45);
 
-      /* pastel glow — resting */
-      --gs1: rgba(185, 205, 255, 0.28);
-      --gs2: rgba(200, 175, 255, 0.14);
-      --gs3: rgba(165, 145, 240, 0.07);
-      /* pastel glow — expanded */
-      --gl1: rgba(185, 205, 255, 0.60);
-      --gl2: rgba(200, 175, 255, 0.30);
-      --gl3: rgba(165, 145, 240, 0.16);
+      /* sunset glow — resting */
+      --gs1: rgba(255, 180,  60, 0.28);
+      --gs2: rgba(240, 110,  30, 0.14);
+      --gs3: rgba(180,  50,  10, 0.07);
+      /* sunset glow — expanded */
+      --gl1: rgba(255, 180,  60, 0.60);
+      --gl2: rgba(240, 110,  30, 0.30);
+      --gl3: rgba(180,  50,  10, 0.16);
 
     }
 
@@ -135,22 +135,28 @@
       cursor: pointer;
 
       background: radial-gradient(circle at 36% 32%,
-        #f4f0ff 0%,
-        #ccdaf8 16%,
-        #aab8f0 36%,
-        #c8a8f2 60%,
-        #9272cc 82%,
-        #503a96 100%
+        #fff8ee 0%,
+        #f8d060 16%,
+        #f07030 36%,
+        #c03818 60%,
+        #701008 82%,
+        #1c0200 100%
       );
 
       /* initial resting shadow — JS takes over after first tick */
       box-shadow:
-        0 0  10px  3px  var(--gs1),
-        0 0  32px  12px var(--gs2),
-        0 0  80px  40px var(--gs3);
+        0 0  10px  3px  rgba(255, 180,  60, 0.30),
+        0 0  32px  12px rgba(240, 110,  30, 0.16),
+        0 0  80px  40px rgba(180,  50,  10, 0.08);
 
       transform: scale(0.84); /* initial resting scale — JS takes over immediately */
       will-change: transform, filter;
+      transition: opacity 0.8s ease;
+    }
+
+    .orb.hidden {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .orb::before {
@@ -176,7 +182,7 @@
       border-radius: 50%;
       background: radial-gradient(circle at center,
         transparent 45%,
-        rgba(100, 150, 255, 0.12) 65%,
+        rgba(255, 190,  80, 0.12) 65%,
         transparent 80%
       );
       animation: halo var(--cycle-duration, 8s) ease-in-out infinite;
@@ -292,6 +298,44 @@
     .sbtn:hover  { opacity: 0.70; }
     .sbtn.active { opacity: 0.95; }
 
+    /* ── shape toggle ── */
+    .shape-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .shbtn {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--label);
+      opacity: 0.45;
+      cursor: pointer;
+      transition: opacity 0.3s ease;
+      user-select: none;
+    }
+    .shbtn:hover  { opacity: 0.70; }
+    .shbtn.active { opacity: 0.95; }
+
+    /* ── bloom shape ── */
+    .bloom-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      pointer-events: none;
+      cursor: pointer;
+      transition: opacity 0.8s ease;
+    }
+    .bloom-svg.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .petal       { fill: url(#petalGrad); }
+    .petal-extra { opacity: 0; }
+
     /* ── time-of-day color overlay ── */
     #tod-overlay {
       position: fixed;
@@ -312,6 +356,18 @@
       transition: opacity 1.5s ease;
     }
     #dim-overlay.on { opacity: 0.91; }
+
+    /* ── blue light filter overlay ── */
+    #warm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 140, 20, 0.22);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 101;
+      transition: opacity 1.2s ease;
+    }
+    #warm-overlay.on { opacity: 1; }
 
     /* ── bottom-right button strip ── */
     #bottom-right {
@@ -337,6 +393,7 @@
     #bottom-right span:hover   { opacity: 0.70; }
     #dim-btn.active  { opacity: 0.95 !important; color: rgba(255,220,160,0.9) !important; }
     #dark-btn.active { opacity: 0.95 !important; }
+    #warm-btn.active { opacity: 0.95 !important; color: rgba(255,190,80,0.9) !important; }
 
     /* ── branding ── */
     #branding {
@@ -401,6 +458,36 @@
         <circle class="timer-fill" id="timerFill" cx="110" cy="110" r="104"/>
       </svg>
 
+      <!-- bloom shape -->
+      <svg class="bloom-svg" id="bloomSvg" viewBox="0 0 220 220">
+        <defs>
+          <linearGradient id="petalGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#c03010" stop-opacity="0.85"/>
+            <stop offset="50%"  stop-color="#f07030"/>
+            <stop offset="100%" stop-color="#f8d060"/>
+          </linearGradient>
+          <filter id="petalGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="petalGroup" transform="translate(110,110)" filter="url(#petalGlow)">
+          <g transform="rotate(0)">  <path class="petal petal-base" id="petal0"/></g>
+          <g transform="rotate(60)"> <path class="petal petal-base" id="petal1"/></g>
+          <g transform="rotate(120)"><path class="petal petal-base" id="petal2"/></g>
+          <g transform="rotate(180)"><path class="petal petal-base" id="petal3"/></g>
+          <g transform="rotate(240)"><path class="petal petal-base" id="petal4"/></g>
+          <g transform="rotate(300)"><path class="petal petal-base" id="petal5"/></g>
+          <g transform="rotate(30)"> <path class="petal petal-extra" id="petal6"/></g>
+          <g transform="rotate(90)"> <path class="petal petal-extra" id="petal7"/></g>
+          <g transform="rotate(150)"><path class="petal petal-extra" id="petal8"/></g>
+          <g transform="rotate(210)"><path class="petal petal-extra" id="petal9"/></g>
+          <g transform="rotate(270)"><path class="petal petal-extra" id="petal10"/></g>
+          <g transform="rotate(330)"><path class="petal petal-extra" id="petal11"/></g>
+        </g>
+        <circle id="bloomCenter" cx="110" cy="110" r="8" fill="#f8e090" filter="url(#petalGlow)"/>
+      </svg>
+
       <div class="orb" id="orb"></div>
     </div>
 
@@ -409,9 +496,15 @@
 
   <!-- bottom controls -->
   <div class="controls">
+    <div class="shape-row">
+      <span class="shbtn active" id="orbBtn">orb</span>
+      <span class="shbtn" id="bloomBtn">bloom</span>
+    </div>
     <div class="sound-row">
+      <span class="sbtn" id="silenceBtn">silence</span>
       <span class="sbtn" id="binauralBtn">binaural</span>
       <span class="sbtn" id="rainBtn">rain</span>
+      <span class="sbtn" id="frogsBtn">frogs</span>
     </div>
     <div class="timer-btns">
       <span class="tbtn" data-min="0">—</span>
@@ -433,7 +526,9 @@
 
   <div id="tod-overlay"></div>
   <div id="dim-overlay"></div>
+  <div id="warm-overlay"></div>
   <div id="bottom-right">
+    <span id="warm-btn">warm</span>
     <span id="dark-btn">dark</span>
     <span id="dim-btn">dim</span>
   </div>
@@ -505,9 +600,9 @@
       const s = (a, b) => (a + (b - a) * t).toFixed(1);
       const a = (lo, hi) => (lo + (hi - lo) * t).toFixed(2);
       return [
-        `0 0 ${s(10,28)}px ${s(3,12)}px rgba(185,205,255,${a(0.28,0.60)})`,
-        `0 0 ${s(32,80)}px ${s(12,36)}px rgba(200,175,255,${a(0.14,0.30)})`,
-        `0 0 ${s(80,180)}px ${s(40,100)}px rgba(165,145,240,${a(0.07,0.16)})`,
+        `0 0 ${s(10,28)}px ${s(3,12)}px rgba(255,180, 60,${a(0.30,0.65)})`,
+        `0 0 ${s(32,80)}px ${s(12,36)}px rgba(240,110, 30,${a(0.16,0.32)})`,
+        `0 0 ${s(80,180)}px ${s(40,100)}px rgba(180, 50, 10,${a(0.08,0.18)})`,
       ].join(', ');
     }
 
@@ -525,8 +620,8 @@
       displayedLabel = text;
     }
 
-    // ── pause on orb click ──────────────────────────────────────────────────
-    orb.addEventListener('click', () => {
+    // ── pause on orb / bloom click ──────────────────────────────────────────
+    function togglePause() {
       paused = !paused;
       if (paused) {
         orb.classList.add('paused');
@@ -534,12 +629,11 @@
         updateLabel('hold');
       } else {
         orb.classList.remove('paused');
-        // shift phaseStart forward by paused duration so the cycle resumes cleanly
         phaseStart += (performance.now() - pausedAt);
-        // force label re-sync
         displayedLabel = null;
       }
-    });
+    }
+    orb.addEventListener('click', togglePause);
 
     // ── pattern selection ───────────────────────────────────────────────────
     document.querySelectorAll('.dot').forEach(dot => {
@@ -590,6 +684,7 @@
     // ── audio ────────────────────────────────────────────────────────────────
     let audioCtx    = null;
     let soundMode   = null; // null | 'binaural' | 'rain'
+    let silenced    = false;
 
     // binaural nodes
     let binauralMaster = null;
@@ -643,6 +738,21 @@
       rainMaster.gain.value = 0;
       rainMaster.connect(audioCtx.destination);
 
+      // intermediate swell node — LFO waves the rain in and out
+      const rainSwell = audioCtx.createGain();
+      rainSwell.gain.value = 0.72;
+      rainSwell.connect(rainMaster);
+
+      // LFO: ~17 s per wave, depth ±0.28 → swell oscillates 0.44 → 1.0
+      const lfo = audioCtx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.06;
+      const lfoDepth = audioCtx.createGain();
+      lfoDepth.gain.value = 0.28;
+      lfo.connect(lfoDepth);
+      lfoDepth.connect(rainSwell.gain);
+      lfo.start();
+
       function noiseSource() {
         const len  = audioCtx.sampleRate * 3;
         const buf  = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
@@ -660,50 +770,140 @@
       hp.type = 'highpass'; hp.frequency.value = 380;
       const lp    = audioCtx.createBiquadFilter();
       lp.type = 'lowpass';  lp.frequency.value = 7200; lp.Q.value = 0.4;
-      const g1    = audioCtx.createGain(); g1.gain.value = 0.70;
-      src1.connect(hp); hp.connect(lp); lp.connect(g1); g1.connect(rainMaster);
+      const g1    = audioCtx.createGain(); g1.gain.value = 0.48;
+      src1.connect(hp); hp.connect(lp); lp.connect(g1); g1.connect(rainSwell);
       src1.start();
 
       // Layer 2: mids patter — gives the distinct drop texture
       const src2  = noiseSource();
       const bp    = audioCtx.createBiquadFilter();
       bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.7;
-      const g2    = audioCtx.createGain(); g2.gain.value = 0.30;
-      src2.connect(bp); bp.connect(g2); g2.connect(rainMaster);
+      const g2    = audioCtx.createGain(); g2.gain.value = 0.18;
+      src2.connect(bp); bp.connect(g2); g2.connect(rainSwell);
       src2.start();
+    }
+
+    // ── spring peepers — for DM ─────────────────────────────────────────────
+    let frogsMaster = null;
+    let frogsTimer  = null;
+
+    // five frogs: distinct pitches, spread across the stereo field, offset intervals
+    const FROGS_CFG = [
+      { freq: 2340, pan: -0.72, interval: 0.92, nextCall: 0 },
+      { freq: 2460, pan: -0.28, interval: 1.18, nextCall: 0 },
+      { freq: 2560, pan:  0.08, interval: 0.78, nextCall: 0 },
+      { freq: 2640, pan:  0.52, interval: 1.34, nextCall: 0 },
+      { freq: 2400, pan:  0.80, interval: 1.05, nextCall: 0 },
+    ];
+    let frogPanners = null;
+
+    function initFrogs() {
+      if (frogsMaster) return;
+      ensureCtx();
+      frogsMaster = audioCtx.createGain();
+      frogsMaster.gain.value = 0;
+      frogsMaster.connect(audioCtx.destination);
+      frogPanners = FROGS_CFG.map(cfg => {
+        const p = audioCtx.createStereoPanner();
+        p.pan.value = cfg.pan;
+        p.connect(frogsMaster);
+        return p;
+      });
+    }
+
+    function scheduleChirp(when, freq, panner) {
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 2800;
+      lp.Q.value = 0.5;
+      lp.connect(panner);
+
+      const env = audioCtx.createGain();
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(0.44, when + 0.018);
+      env.gain.setValueAtTime(0.44, when + 0.123);
+      env.gain.exponentialRampToValueAtTime(0.001, when + 0.240);
+      env.connect(lp);
+
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq - 195, when);
+      osc.frequency.linearRampToValueAtTime(freq, when + 0.038);
+      osc.connect(env);
+      osc.start(when);
+      osc.stop(when + 0.28);
+    }
+
+    function tickFrogs() {
+      const now       = audioCtx.currentTime;
+      const lookahead = 0.12;
+      FROGS_CFG.forEach((cfg, i) => {
+        if (cfg.nextCall < now + lookahead) {
+          scheduleChirp(Math.max(cfg.nextCall, now + 0.01), cfg.freq, frogPanners[i]);
+          cfg.nextCall = Math.max(cfg.nextCall, now) + cfg.interval + (Math.random() - 0.5) * 0.28;
+        }
+      });
+    }
+
+    function startFrogs() {
+      initFrogs();
+      const now = audioCtx.currentTime;
+      FROGS_CFG.forEach((cfg, i) => { cfg.nextCall = now + i * 0.18 + Math.random() * 0.35; });
+      frogsTimer = setInterval(tickFrogs, 50);
+    }
+
+    function stopFrogs() {
+      clearInterval(frogsTimer);
+      frogsTimer = null;
+    }
+
+    function updateSoundBtns() {
+      document.getElementById('silenceBtn').classList.toggle('active',  silenced);
+      document.getElementById('binauralBtn').classList.toggle('active', !silenced && soundMode === 'binaural');
+      document.getElementById('rainBtn').classList.toggle('active',     !silenced && soundMode === 'rain');
+      document.getElementById('frogsBtn').classList.toggle('active',    !silenced && soundMode === 'frogs');
+    }
+
+    function applyGains() {
+      const on = !silenced;
+      if (binauralMaster) binauralMaster.gain.setTargetAtTime(on && soundMode === 'binaural' ? 1.00 : 0, audioCtx.currentTime, 1.5);
+      if (rainMaster)     rainMaster.gain.setTargetAtTime(on && soundMode === 'rain'         ? 0.65 : 0, audioCtx.currentTime, 1.5);
+      if (frogsMaster)    frogsMaster.gain.setTargetAtTime(on && soundMode === 'frogs'       ? 0.88 : 0, audioCtx.currentTime, 1.5);
     }
 
     function setMode(mode) {
       ensureCtx();
       if (audioCtx.state === 'suspended') audioCtx.resume();
 
-      // turning off current mode
-      if (mode === soundMode) {
-        if (soundMode === 'binaural') binauralMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
-        if (soundMode === 'rain')     rainMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+      const prev = soundMode;
+      if (mode === soundMode && !silenced) {
         soundMode = null;
       } else {
-        // fade out whatever is playing
-        if (soundMode === 'binaural') binauralMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
-        if (soundMode === 'rain')     rainMaster.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
-
         soundMode = mode;
-        if (mode === 'binaural') {
-          initBinaural();
-          binauralMaster.gain.setTargetAtTime(1, audioCtx.currentTime, 2.0);
-        }
-        if (mode === 'rain') {
-          initRain();
-          rainMaster.gain.setTargetAtTime(1, audioCtx.currentTime, 2.0);
-        }
+        if (mode === 'binaural') initBinaural();
+        if (mode === 'rain')     initRain();
+        if (mode === 'frogs')    startFrogs();
+        silenced = false;
       }
 
-      document.getElementById('binauralBtn').classList.toggle('active', soundMode === 'binaural');
-      document.getElementById('rainBtn').classList.toggle('active', soundMode === 'rain');
+      if (prev === 'frogs' && soundMode !== 'frogs') stopFrogs();
+
+      applyGains();
+      updateSoundBtns();
     }
+
+    document.getElementById('silenceBtn').addEventListener('click', () => {
+      if (soundMode === null) return;
+      silenced = !silenced;
+      ensureCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      applyGains();
+      updateSoundBtns();
+    });
 
     document.getElementById('binauralBtn').addEventListener('click', () => setMode('binaural'));
     document.getElementById('rainBtn').addEventListener('click',     () => setMode('rain'));
+    document.getElementById('frogsBtn').addEventListener('click',    () => setMode('frogs'));
 
     // current expansion (0 = orb small, 1 = orb full) — updated in tick
     let currentExpansion = 0;
@@ -749,11 +949,11 @@
       }
     }
 
-    // ── slow color shift (hue-rotate over ~60 s) ────────────────────────────
-    // blues(0°) → greens(90°) → purples(270°) → back
-    // We drive --hue on the orb element so body ambient stays stable.
+    // ── slow warm color oscillation (~80 s cycle) ───────────────────────────
+    // Sine oscillation: −15° (deeper red) → 0° (base sunset) → +35° (golden)
+    // Never leaves the warm band — no greens, blues, or purples.
     let hueStart = performance.now();
-    const HUE_CYCLE = 60000; // 60s full rotation
+    const HUE_CYCLE = 80000; // 80s per sine cycle
 
     // ── particle system ─────────────────────────────────────────────────────
     const canvas = document.getElementById('particles');
@@ -821,7 +1021,7 @@
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${210 + hue * 0.3}, 80%, 78%, ${p.alpha})`;
+        ctx.fillStyle = `hsla(${30 + hue * 0.6}, 85%, 72%, ${p.alpha})`;
         ctx.fill();
       }
     }
@@ -872,6 +1072,17 @@
     applyToD();
     setInterval(applyToD, 60_000);
 
+    // ── warm (blue light filter) button ─────────────────────────────────────
+    const warmBtn     = document.getElementById('warm-btn');
+    const warmOverlay = document.getElementById('warm-overlay');
+    let warmOn = false;
+
+    warmBtn.addEventListener('click', () => {
+      warmOn = !warmOn;
+      warmOverlay.classList.toggle('on', warmOn);
+      warmBtn.classList.toggle('active', warmOn);
+    });
+
     // ── dim button ───────────────────────────────────────────────────────────
     const dimBtn     = document.getElementById('dim-btn');
     const dimOverlay = document.getElementById('dim-overlay');
@@ -916,6 +1127,57 @@
       navigator.serviceWorker.register('./sw.js');
     }
 
+    // ── bloom shape ──────────────────────────────────────────────────────────
+    let currentShape = 'orb';
+    const bloomSvg       = document.getElementById('bloomSvg');
+    const bloomCenterEl  = document.getElementById('bloomCenter');
+    const petalBase      = document.querySelectorAll('.petal-base');
+    const petalExtra     = document.querySelectorAll('.petal-extra');
+
+    function petalD(t) {
+      const len = 40 + t * 38;
+      const w   =  5 + t * 22;
+      const off =  6 + t * 10;
+      const y0  = -off;
+      const y1  = -(off + len);
+      const cy1 = -(off + len * 0.35);
+      const cy2 = -(off + len * 0.72);
+      return `M 0 ${y0.toFixed(1)} C ${w.toFixed(1)} ${cy1.toFixed(1)},${w.toFixed(1)} ${cy2.toFixed(1)},0 ${y1.toFixed(1)} C ${(-w).toFixed(1)} ${cy2.toFixed(1)},${(-w).toFixed(1)} ${cy1.toFixed(1)},0 ${y0.toFixed(1)}`;
+    }
+
+    function updateBloom(expansion, hue) {
+      const d = petalD(expansion);
+      petalBase.forEach(p => p.setAttribute('d', d));
+      petalExtra.forEach(p => p.setAttribute('d', d));
+
+      // extra petals fade in after expansion > 0.3, fully visible at 0.75
+      const extraOpacity = Math.max(0, Math.min(1, (expansion - 0.3) / 0.45)).toFixed(3);
+      petalExtra.forEach(p => p.style.opacity = extraOpacity);
+
+      bloomCenterEl.setAttribute('r', (6 + expansion * 5).toFixed(1));
+      const gs = (8 + expansion * 24).toFixed(1);
+      const ga = (0.22 + expansion * 0.48).toFixed(2);
+      bloomSvg.style.filter = `hue-rotate(${hue.toFixed(1)}deg) drop-shadow(0 0 ${gs}px rgba(255,160,40,${ga}))`;
+    }
+
+    document.getElementById('orbBtn').addEventListener('click', () => {
+      currentShape = 'orb';
+      orb.classList.remove('hidden');
+      bloomSvg.classList.remove('active');
+      document.getElementById('orbBtn').classList.add('active');
+      document.getElementById('bloomBtn').classList.remove('active');
+    });
+
+    document.getElementById('bloomBtn').addEventListener('click', () => {
+      currentShape = 'bloom';
+      orb.classList.add('hidden');
+      bloomSvg.classList.add('active');
+      document.getElementById('bloomBtn').classList.add('active');
+      document.getElementById('orbBtn').classList.remove('active');
+    });
+
+    bloomSvg.addEventListener('click', togglePause);
+
     // ── main loop ────────────────────────────────────────────────────────────
     const LERP = 0.055; // slow follow — feels meditative, not jittery
 
@@ -926,7 +1188,7 @@
       scene.style.transform = `translate(${currentPX.toFixed(2)}px, ${currentPY.toFixed(2)}px)`;
 
       // color shift
-      const hue = ((now - hueStart) / HUE_CYCLE * 360) % 360;
+      const hue = 10 + Math.sin((now - hueStart) / HUE_CYCLE * Math.PI * 2) * 25;
       orb.style.filter = `hue-rotate(${hue.toFixed(1)}deg)`;
 
       // particles
@@ -976,6 +1238,8 @@
         orb.style.transform = `scale(${scale.toFixed(4)})`;
         orb.style.boxShadow = lerpShadow(currentExpansion);
       }
+
+      if (currentShape === 'bloom') updateBloom(currentExpansion, hue);
 
       requestAnimationFrame(tick);
     }
